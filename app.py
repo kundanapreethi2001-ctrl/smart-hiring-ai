@@ -1,7 +1,9 @@
 import os
+
 import joblib
 import pandas as pd
 import streamlit as st
+import matplotlib.pyplot as plt
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -59,6 +61,7 @@ Give 2-4 concise bullet points.
 ## 📊 Hiring Analysis
 
 Explain the candidate profile using the candidate data and ML output.
+
 Do not claim that feature importance proves causation.
 
 ## 🎯 Recommendations
@@ -66,6 +69,7 @@ Do not claim that feature importance proves causation.
 Give 3-5 practical recommendations.
 
 Important rules:
+
 - Do not change or override the ML prediction.
 - Do not invent candidate information.
 - Do not claim that feature importance proves causation.
@@ -214,7 +218,6 @@ if st.button(
     # --------------------------------------
 
     candidate = {
-
         "age": age,
         "experience": experience,
         "cgpa": cgpa,
@@ -253,17 +256,21 @@ if st.button(
     # Feature Importance
     # --------------------------------------
 
-    feature_importance = {}
+    importance_df = pd.DataFrame({
+        "Feature": candidate_df.columns,
+        "Importance": model.feature_importances_
+    })
 
-    for feature, importance in zip(
-        candidate_df.columns,
-        model.feature_importances_
-    ):
+    importance_df["Importance"] = (
+        importance_df["Importance"].astype(float)
+    )
 
-        feature_importance[feature] = round(
-            float(importance),
-            4
+    feature_importance = dict(
+        zip(
+            importance_df["Feature"],
+            importance_df["Importance"].round(4)
         )
+    )
 
 
     # ======================================
@@ -306,6 +313,7 @@ if st.button(
 
     summary_col1, summary_col2, summary_col3 = st.columns(3)
 
+
     with summary_col1:
 
         st.metric(
@@ -318,6 +326,7 @@ if st.button(
             coding_score
         )
 
+
     with summary_col2:
 
         st.metric(
@@ -329,6 +338,7 @@ if st.button(
             "SQL Score",
             sql_score
         )
+
 
     with summary_col3:
 
@@ -351,21 +361,60 @@ if st.button(
 
     st.header("🧠 Model Feature Importance")
 
-    importance_df = pd.DataFrame(
-        {
-            "Feature": feature_importance.keys(),
-            "Importance": feature_importance.values()
-        }
-    )
 
+    # Sort for better horizontal chart
     importance_df = importance_df.sort_values(
         "Importance",
-        ascending=False
+        ascending=True
     )
 
-    st.bar_chart(
-        importance_df.set_index("Feature")
+
+    # Create Matplotlib chart
+    fig, ax = plt.subplots(
+        figsize=(8, 5)
     )
+
+
+    ax.barh(
+        importance_df["Feature"],
+        importance_df["Importance"]
+    )
+
+
+    ax.set_xlabel(
+        "Importance"
+    )
+
+    ax.set_ylabel(
+        "Feature"
+    )
+
+    ax.set_title(
+        "Random Forest Feature Importance"
+    )
+
+
+    # Add values to bars
+    for index, value in enumerate(
+        importance_df["Importance"]
+    ):
+
+        ax.text(
+            value,
+            index,
+            f" {value:.3f}",
+            va="center"
+        )
+
+
+    plt.tight_layout()
+
+    st.pyplot(
+        fig,
+        use_container_width=True
+    )
+
+    plt.close(fig)
 
 
     # ======================================
@@ -375,6 +424,7 @@ if st.button(
     st.divider()
 
     st.header("🤖 AI Hiring Analysis")
+
 
     with st.spinner(
         "Generating AI hiring analysis..."
@@ -392,5 +442,7 @@ if st.button(
         )
 
 
-    # Display markdown-formatted AI response
-    st.markdown(ai_response)
+    # Display AI response
+    st.markdown(
+        ai_response
+    )
